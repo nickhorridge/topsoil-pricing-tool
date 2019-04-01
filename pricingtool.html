@@ -1,0 +1,229 @@
+<style>
+
+input:not(#bagged-check),select {
+    padding: 6px 10px;
+    margin: 3px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+select {
+	padding: 12px 10px;
+}
+
+.calc-input {
+    width: 120px;
+    padding: 6px 10px;
+    margin: 3px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    float: left;
+}
+
+body, input, textarea, button, select {
+    font-family: Arimo,sans-serif;
+    font-style: normal;
+    font-weight: 400;
+    color: #3d4246;
+    line-height: 1.5;
+}
+
+#content {
+    padding: 30px;
+    margin-top: 30px;
+    background-color: rgba(0,132,3,0.1);
+	width:400px;
+	margin:auto;
+}
+
+#header {
+	text-align:center;
+	width:400px;
+	margin:auto;
+	font-weight:bold;
+}
+
+.form {
+	width:400px;
+}
+
+.input-label {
+	width:200px;
+	float:left;
+}
+
+</style>
+<div id="header">
+<img src="logo200.png"><br>Pricing Tool
+</div>
+<div id="content">
+<div id="form">
+<div class="input-label">Product: </div>
+<select id="product-select" class="form" onchange="productChange()">
+</select>
+<br>
+<div class="input-label">Distance: </div><input id="mileage-input" class="form" type="number" value=1></input>
+<br>
+<div class="input-label"><span id="amount-label">Amount</span>: </div><input id="amount-input" class="form" type="number" value=1></input>
+<br>
+<input id="bagged-check" type="checkbox" value="bagged">Bagged
+<br>
+<div class="input-label">Vehicle:</div>
+<select id="vehicle-select" class="form">
+  <option value="auto">Auto-select</option>
+</select>
+<br>
+<button type="button" onclick="buttonPress()">Calculate</button>
+<div id="output"></div>
+<br>
+
+</div>
+</div>
+
+<script>
+
+function Vehicle(name,max_loose,max_heavy,max_light){
+	this.name = name
+	this.max_loose = max_loose
+	this.max_heavy = max_heavy
+	this.max_light = max_light
+}
+
+function Product(name,price_loose,price_bagged,heavy){
+	this.name = name
+	this.price_loose = price_loose
+	this.price_bagged = price_bagged
+	this.heavy = heavy
+}
+
+function Quote(product,amount,vehicle,bagged,distance){
+	this.product = product
+	this.amount = amount
+	this.vehicle = vehicle
+	this.bagged = bagged
+	this.distance = parseFloat(distance)
+}
+
+function el(id){
+	return document.getElementById(id)
+}
+
+function setup(){
+	for (v in vehicles){
+		el("vehicle-select").innerHTML += "<option value='" + vehicles[v].name + "'>" + vehicles[v].name + "</option>"
+	}
+	for (p in products){
+		el("product-select").innerHTML += "<option value='" + products[p].name + "'>" + products[p].name + "</option>"
+	}
+}
+
+function buttonPress(){
+	productName = el("product-select").value
+	mileage = parseFloat(el("mileage-input").value)
+	amount = parseFloat(el("amount-input").value)
+	vehicle = el("vehicle-select").value
+	bagged = el("bagged-check").checked
+	result = calculatePrice(productName,amount,vehicle,bagged,mileage)
+	output = []
+	for (i in result){
+		output.push(result[i].toString())
+	}
+	el("output").innerHTML = "<br>Price: £" + output[0] + "<br>Price (with discount): £" + output[4] + "<br>Number of trips: " + output[1] + "<br>Vehicle(s): " + output[2] + "<br>Delivery cost: £" + output[3]
+	el("output").innerHTML = el("output").innerHTML.replace(/lorry1/g,vehicles["lorry1"] + " tonne lorry")
+	el("output").innerHTML = el("output").innerHTML.replace(/lorry2/g,vehicles["lorry2"] + " tonne lorry")
+	el("output").innerHTML = el("output").innerHTML.replace(/lorry3/g,vehicles["lorry3"] + " tonne lorry")
+	el("output").innerHTML = el("output").innerHTML.replace(/lorry4/g,vehicles["lorry4"] + " tonne lorry")
+}
+
+function calculatePrice(product,amount,vehicle,bagged,mileage){
+	if(bagged){
+		price = products[product].price_bagged
+	} else {
+		price = products[product].price_loose
+	}
+	price *= amount
+	amount_working = amount
+	vehicles_to_use = []
+	while(amount_working > 0){
+		if(vehicle == "auto"){
+			if(amount_working <= vehicles["lorry1"]){
+				vehicles_to_use.push("lorry1")
+				amount_working -= vehicles["lorry1"]
+			} else if(amount_working <= vehicles["lorry2"]){
+				vehicles_to_use.push("lorry2")
+				amount_working -= vehicles["lorry2"]
+			} else if(amount_working <= vehicles["lorry3"]){
+				vehicles_to_use.push("lorry3")
+				amount_working -= vehicles["lorry3"]
+			} else {
+				vehicles_to_use.push("lorry4")
+				amount_working -= vehicles["lorry4"]
+			}
+		} else {
+			for (i = 0;i < Math.ceil(amount/vehicles[vehicle]);i++){
+				vehicles_to_use.push(vehicle)
+			}
+			amount_working = 0
+		}
+	}
+	number_of_trips = vehicles_to_use.length
+	delivery_cost = mileage * 2 * number_of_trips * 0.67
+	with_discount = price
+	if (amount < 5){
+		
+	} else if (amount < 20) {
+		with_discount = price*0.9
+	} else {
+		with_discount = price*0.8
+	}
+	return [price,number_of_trips,vehicles_to_use,delivery_cost,with_discount];
+}
+
+function productChange(){
+	amount_label = el("amount-label")
+	product_select = el("product-select")
+	if(product_select.value == "topsoil"){
+		amount_label.innerHTML = "Weight (tonnes)"
+	} else if (product_select.value == "bark") {
+		amount_label.innerHTML = "Volume (m³)"
+	}
+}
+
+function getVehicle(name){
+	for (i in vehicles){
+		if(vehicles[i].name == name){
+			return vehicles[i]
+		}
+	}
+	console.log(name + " not found")
+}
+
+function getProduct(name){
+	for (i in products){
+		if (products[i].name.toLowerCase() == name.toLowerCase()){
+			return products[i]
+		}
+	}
+	console.log(name + " not found")
+}
+
+vehicles = [
+	new Vehicle("19.5 tonne lorry",19.5,0,0),
+	new Vehicle("16.5 tonne lorry",16.5,12,12),
+	new Vehicle("6 bag lorry",0,4,6),
+	new Vehicle("Iveco",4,0,0),
+	new Vehicle("Cabstar",2,0,0)
+]
+
+products = [
+	new Product("Topsoil",70,72,true),
+	new Product("Bark",79,81,false)
+]
+
+productChange()
+
+setup()
+
+</script>
