@@ -84,26 +84,80 @@ body, input, textarea, button, select {
 
 <script>
 
-function Vehicle(name,max_loose,max_heavy,max_light){
-	this.name = name
-	this.max_loose = max_loose
-	this.max_heavy = max_heavy
-	this.max_light = max_light
+//Vehicle class - used to store information about each vehicle
+class Vehicle {
+	constructor(name,max_loose,max_heavy,max_light){
+		this.name = name
+		this.max_loose = max_loose
+		this.max_heavy = max_heavy
+		this.max_light = max_light
+	}
 }
 
-function Product(name,price_loose,price_bagged,heavy){
-	this.name = name
-	this.price_loose = price_loose
-	this.price_bagged = price_bagged
-	this.heavy = heavy
+//Product class - used to store information about one type of product
+class Product {
+	constructor(name,price_loose,price_bagged,heavy){
+		this.name = name
+		this.price_loose = price_loose
+		this.price_bagged = price_bagged
+		this.heavy = heavy
+	}
 }
 
-function Quote(product,amount,vehicle,bagged,distance){
-	this.product = product
-	this.amount = amount
-	this.vehicle = vehicle
-	this.bagged = bagged
-	this.distance = parseFloat(distance)
+//VehicleList class - container for all Vehicle objects being used
+class VehicleList {
+	constructor(){
+		this.vehicles = []
+	}
+	
+	getVehicle(name){
+		for (var v in this.vehicles){
+			if(name.toLowerCase() == this.vehicles[v].name.toLoserCase()){
+				return this.vehicles[v]
+			}
+		}
+		console.log("vehicle: " + name + " not found.")
+	}
+	
+	addVehicles(list_of_vehicles){
+		for (var v in list_of_vehicles){
+			this.vehicles.push(list_of_vehicles[v])
+		}
+	}
+}
+
+//ProductList class - container for all Product objects being used
+class ProductList{
+	constructor (){
+		this.products = []
+	}
+	
+	getProduct(name){
+		for (var p in this.products){
+			console.log(this.products[p].name)
+			if(name.toLowerCase() == this.products[p].name.toLowerCase()){
+				return this.products[p]
+			}
+		}
+		console.log("product: " + name + " not found.")
+	}
+	
+	addProducts (list_of_products){
+		for (var p in list_of_products){
+			this.products.push(list_of_products[p])
+		}
+	}
+}
+
+//Quote class - class to store information
+class Quote{
+	constructor(product,amount,vehicle,bagged,distance){
+		this.product = products.getProduct(product)
+		this.amount = parseFloat(amount)
+		this.vehicle = vehicle
+		this.bagged = bagged
+		this.distance = parseFloat(distance)
+	}
 }
 
 function el(id){
@@ -111,35 +165,29 @@ function el(id){
 }
 
 function setup(){
-	for (v in vehicles){
-		el("vehicle-select").innerHTML += "<option value='" + vehicles[v].name + "'>" + vehicles[v].name + "</option>"
+	for (var v in vehicles.vehicles){
+		name = vehicles.vehicles[v].name
+		el("vehicle-select").innerHTML += "<option value='" + name + "'>" + name + "</option>"
 	}
-	for (p in products){
-		el("product-select").innerHTML += "<option value='" + products[p].name + "'>" + products[p].name + "</option>"
+	for (var p in products.products){
+		name = products.products[p].name
+		el("product-select").innerHTML += "<option value='" + name + "'>" + name + "</option>"
 	}
 }
 
 function buttonPress(){
-	productName = el("product-select").value
-	mileage = parseFloat(el("mileage-input").value)
-	amount = parseFloat(el("amount-input").value)
-	vehicle = el("vehicle-select").value
-	bagged = el("bagged-check").checked
-	result = calculatePrice(productName,amount,vehicle,bagged,mileage)
-	output = []
-	for (i in result){
-		output.push(result[i].toString())
-	}
-	el("output").innerHTML = "<br>Price: £" + output[0] + "<br>Price (with discount): £" + output[4] + "<br>Number of trips: " + output[1] + "<br>Vehicle(s): " + output[2] + "<br>Delivery cost: £" + output[3]
-	el("output").innerHTML = el("output").innerHTML.replace(/lorry1/g,vehicles["lorry1"] + " tonne lorry")
-	el("output").innerHTML = el("output").innerHTML.replace(/lorry2/g,vehicles["lorry2"] + " tonne lorry")
-	el("output").innerHTML = el("output").innerHTML.replace(/lorry3/g,vehicles["lorry3"] + " tonne lorry")
-	el("output").innerHTML = el("output").innerHTML.replace(/lorry4/g,vehicles["lorry4"] + " tonne lorry")
+	q_product = el("product-select").value
+	q_amount = el("amount-input").value
+	q_vehicle = el("vehicle-select").value
+	q_bagged = el("bagged-check").checked
+	q_distance = el("mileage-input").value
+	new_quote = new Quote(q_product,q_amount,q_vehicle,q_bagged,q_distance)
+	console.log(new_quote)
 }
 
 function calculatePrice(product,amount,vehicle,bagged,mileage){
 	if(bagged){
-		price = products[product].price_bagged
+		price = getProduct(product).price_bagged
 	} else {
 		price = products[product].price_loose
 	}
@@ -148,21 +196,13 @@ function calculatePrice(product,amount,vehicle,bagged,mileage){
 	vehicles_to_use = []
 	while(amount_working > 0){
 		if(vehicle == "auto"){
-			if(amount_working <= vehicles["lorry1"]){
-				vehicles_to_use.push("lorry1")
-				amount_working -= vehicles["lorry1"]
-			} else if(amount_working <= vehicles["lorry2"]){
-				vehicles_to_use.push("lorry2")
-				amount_working -= vehicles["lorry2"]
-			} else if(amount_working <= vehicles["lorry3"]){
-				vehicles_to_use.push("lorry3")
-				amount_working -= vehicles["lorry3"]
-			} else {
-				vehicles_to_use.push("lorry4")
-				amount_working -= vehicles["lorry4"]
+			best_veh = null
+			best_amount = -1
+			for (var v in vehicles){
+				//amount_working - v.
 			}
 		} else {
-			for (i = 0;i < Math.ceil(amount/vehicles[vehicle]);i++){
+			for (var i = 0;i < Math.ceil(amount/vehicles[vehicle]);i++){
 				vehicles_to_use.push(vehicle)
 			}
 			amount_working = 0
@@ -191,39 +231,26 @@ function productChange(){
 	}
 }
 
-function getVehicle(name){
-	for (i in vehicles){
-		if(vehicles[i].name == name){
-			return vehicles[i]
-		}
-	}
-	console.log(name + " not found")
-}
+vehicles = new VehicleList()
+products = new ProductList()
 
-function getProduct(name){
-	for (i in products){
-		if (products[i].name.toLowerCase() == name.toLowerCase()){
-			return products[i]
-		}
-	}
-	console.log(name + " not found")
-}
-
-vehicles = [
+vehicles.addVehicles([
 	new Vehicle("19.5 tonne lorry",19.5,0,0),
 	new Vehicle("16.5 tonne lorry",16.5,12,12),
 	new Vehicle("6 bag lorry",0,4,6),
 	new Vehicle("Iveco",4,0,0),
 	new Vehicle("Cabstar",2,0,0)
-]
+])
 
-products = [
+products.addProducts([
 	new Product("Topsoil",70,72,true),
 	new Product("Bark",79,81,false)
-]
+])
 
 productChange()
 
 setup()
+
+
 
 </script>
