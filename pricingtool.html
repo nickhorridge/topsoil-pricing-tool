@@ -91,6 +91,17 @@ class Vehicle {
 		this.max_loose = max_loose
 		this.max_heavy = max_heavy
 		this.max_light = max_light
+		this.cost_per_mile = 0.67
+	}
+	
+	getAmount(bagged,heavy){
+		if(bagged && heavy){
+			return this.max_heavy
+		} else if (bagged && !heavy){
+			return this.max_light
+		} else {
+			return this.max_loose
+		}
 	}
 }
 
@@ -112,7 +123,7 @@ class VehicleList {
 	
 	getVehicle(name){
 		for (var v in this.vehicles){
-			if(name.toLowerCase() == this.vehicles[v].name.toLoserCase()){
+			if(name.toLowerCase() == this.vehicles[v].name.toLowerCase()){
 				return this.vehicles[v]
 			}
 		}
@@ -124,6 +135,26 @@ class VehicleList {
 			this.vehicles.push(list_of_vehicles[v])
 		}
 	}
+	
+	getUsableVehicles(bagged,heavy){
+		var usable_vehicles = []
+		for (var v in this.vehicles){
+			var v_amt
+			if (bagged){
+				if(heavy){
+					if(vehicles.vehicles[v].max_heavy > 0) usable_vehicles.push(vehicles.vehicles[v])
+				} else {
+					if(vehicles.vehicles[v].max_light > 0) usable_vehicles.push(vehicles.vehicles[v])
+				}
+			} else {
+				if(vehicles.vehicles[v].max_loose > 0) usable_vehicles.push(vehicles.vehicles[v])
+			}
+		}
+		usable_vehicles.sort((a,b) => (a.getAmount(bagged,heavy) < b.getAmount(bagged,heavy) ? 1 : ((b.getAmount(bagged,heavy) > a.getAmount(bagged,heavy)) ? -1 : 0))); 
+		console.log(usable_vehicles)
+		return usable_vehicles
+	}
+	
 }
 
 //ProductList class - container for all Product objects being used
@@ -155,8 +186,68 @@ class Quote{
 		this.product = products.getProduct(product)
 		this.amount = parseFloat(amount)
 		this.vehicle = vehicle
+		var amount_working = amount
+		var usable_vehicles = []
+		if(vehicle == "auto"){
+			usable_vehicles = vehicles.getUsableVehicles(bagged,this.product.heavy)
+		} else {
+			var vehicle_to_use = vehicles.getVehicle(vehicle)
+			if(vehicle_to_use.getAmount(bagged,this.product.heavy) == 0){
+				throw "Vehicle is not suitable"
+			}
+			usable_vehicles.push(vehicle_to_use)
+		}
+		var max_amt = 0
+		this.trips = []
+		for (var v in usable_vehicles){
+			if(usable_vehicles[v].getAmount(bagged,this.product.heavy) > max_amt) max_amt = usable_vehicles[v].getAmount(bagged,this.product.heavy)
+		}
+		console.log(max_amt)
+		while(amount_working > 0){
+			for (var v in usable_vehicles){
+				if(usable_vehicles[v].getAmount(bagged,this.product.heavy) <= amount_working){
+					if (v==0){
+						this.trips.push(usable_vehicles[v])
+						amount_working -= usable_vehicles[v].getAmount(bagged,this.product.heavy)
+						break
+					} else {
+						this.trips.push(usable_vehicles[v-1])
+						amount_working -= usable_vehicles[v-1].getAmount(bagged,this.product.heavy)
+						break
+					}
+				}
+			}
+			var last_veh = usable_vehicles[usable_vehicles.length-1]
+			if(amount_working < last_veh.getAmount(bagged,this.product.heavy)) {
+				this.trips.push(usable_vehicles[usable_vehicles.length-1])
+				amount_working -= usable_vehicles[usable_vehicles.length-1].getAmount(bagged,this.product.heavy)
+			}
+			console.log("trips:")
+			console.log(this.trips)
+		}
 		this.bagged = bagged
 		this.distance = parseFloat(distance)
+		console.log(this)
+	}
+	
+	getPrice(){
+		var price
+		if(this.bagged){
+			price = this.product.price_bagged
+		} else {
+			price = this.product.price_loose
+		}
+		return Math.round(price * this.amount*100)/100
+	}
+	
+	getDelivery(){
+		var delivery = 0
+		for (var t in this.trips){
+			console.log(this.trips[t])
+			delivery += this.trips[t].cost_per_mile
+			console.log("delivery = " + delivery)
+		}
+		return Math.round(delivery*this.distance*2*100)/100
 	}
 }
 
@@ -181,44 +272,19 @@ function buttonPress(){
 	q_vehicle = el("vehicle-select").value
 	q_bagged = el("bagged-check").checked
 	q_distance = el("mileage-input").value
-	new_quote = new Quote(q_product,q_amount,q_vehicle,q_bagged,q_distance)
-	console.log(new_quote)
-}
-
-function calculatePrice(product,amount,vehicle,bagged,mileage){
-	if(bagged){
-		price = getProduct(product).price_bagged
-	} else {
-		price = products[product].price_loose
-	}
-	price *= amount
-	amount_working = amount
-	vehicles_to_use = []
-	while(amount_working > 0){
-		if(vehicle == "auto"){
-			best_veh = null
-			best_amount = -1
-			for (var v in vehicles){
-				//amount_working - v.
-			}
-		} else {
-			for (var i = 0;i < Math.ceil(amount/vehicles[vehicle]);i++){
-				vehicles_to_use.push(vehicle)
-			}
-			amount_working = 0
+	el("output").innerHTML = ""
+	try{
+		var new_quote = new Quote(q_product,q_amount,q_vehicle,q_bagged,q_distance)
+		el("output").innerHTML += "£" + new_quote.getPrice() + "<br>"
+		el("output").innerHTML += "£" + new_quote.getDelivery() + "<br>"
+		el("output").innerHTML += new_quote.trips.length + " trip(s):<br>"
+		for (var t in new_quote.trips){
+			el("output").innerHTML += new_quote.trips[t].name + "<br>"
 		}
 	}
-	number_of_trips = vehicles_to_use.length
-	delivery_cost = mileage * 2 * number_of_trips * 0.67
-	with_discount = price
-	if (amount < 5){
-		
-	} else if (amount < 20) {
-		with_discount = price*0.9
-	} else {
-		with_discount = price*0.8
+	catch (e){
+		el("output").innerHTML += e
 	}
-	return [price,number_of_trips,vehicles_to_use,delivery_cost,with_discount];
 }
 
 function productChange(){
