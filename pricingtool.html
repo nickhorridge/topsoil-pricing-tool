@@ -31,10 +31,8 @@ body, input, textarea, button, select {
 }
 
 #content {
-    padding: 30px;
     margin-top: 30px;
-    background-color: rgba(0,132,3,0.1);
-	width:400px;
+	width:900px;
 	margin:auto;
 }
 
@@ -46,7 +44,15 @@ body, input, textarea, button, select {
 }
 
 .form {
-	width:400px;
+	width:300px;
+}
+
+#form{
+	width:300px;
+	/*float:left;*/
+    background-color: rgba(0,132,3,0.1);
+	padding:10px;
+	margin-left:290px;
 }
 
 .input-label {
@@ -54,31 +60,69 @@ body, input, textarea, button, select {
 	float:left;
 }
 
+#vehicle-info {
+	width:270px;
+	padding:10px;
+	float:right;
+    background-color: rgba(0,132,3,0.1);
+}
+
+#quote-info {
+	width:270px;
+	padding:10px;
+	float:left;
+    background-color: rgba(0,132,3,0.1);
+	display:none;
+}
+
+#vehicle-checks {
+	background-color: rgba(255, 255, 255, 0.5);
+    padding: 5px;
+}
+
+ul {
+}
+
+li {
+	line-height:0px;
+}
+
+img {
+	width:inherit;
+}
+
 </style>
 <div id="header">
-<img src="logo200.png"><br>Pricing Tool
+Pricing Tool
 </div>
+
 <div id="content">
+<div id="quote-info"></div>
+<div id="vehicle-info"></div>
 <div id="form">
 <div class="input-label">Product: </div>
 <select id="product-select" class="form" onchange="productChange()">
 </select>
-<br>
+<br><br>
 <div class="input-label">Distance: </div><input id="mileage-input" class="form" type="number" value=1></input>
-<br>
+<br><br>
 <div class="input-label"><span id="amount-label">Amount</span>: </div><input id="amount-input" class="form" type="number" value=1></input>
 <br>
 <input id="bagged-check" type="checkbox" value="bagged">Bagged
-<br>
+<br><br>
 <div class="input-label">Vehicle:</div>
-<select id="vehicle-select" class="form">
-  <option value="auto">Auto-select</option>
+<select id="vehicle-select" class="form" onchange="vehicleChange()">
 </select>
-<br>
-<button type="button" onclick="buttonPress()">Calculate</button>
+<button type="button" onclick="vehicleInfoButton()" id="vehicle-info-btn">Show vehicle info</button><br><br>
+<button type="button" onclick="buttonPress()">Calculate</button><br><br>
 <div id="output"></div>
+<div id="vehicle-checks" style="display:none">
+<input id="vcheck1" type="checkbox" value="vcheck1"> Are there drains which may be damaged by a 22 tonne lorry?<br>
+<input id="vcheck2" type="checkbox" value="vcheck2"> Is there space to turn around a 6 metre long vehicle?<br>
+<input id="vcheck3" type="checkbox" value="vcheck3"> Is access to the property large enough for 3 metre wide vehicle?<br>
+</div>
 <br>
-
+<button type="button" onclick="quoteButton()">Add quote</button><br><br>
 </div>
 </div>
 
@@ -86,12 +130,14 @@ body, input, textarea, button, select {
 
 //Vehicle class - used to store information about each vehicle
 class Vehicle {
-	constructor(name,max_loose,max_heavy,max_light){
+	constructor(name,max_loose,max_heavy,max_light,img_url){
 		this.name = name
 		this.max_loose = max_loose
 		this.max_heavy = max_heavy
 		this.max_light = max_light
 		this.cost_per_mile = 0.67
+		this.extra_info = ""
+		this.img_url = img_url
 	}
 	
 	getAmount(bagged,heavy){
@@ -103,12 +149,38 @@ class Vehicle {
 			return this.max_loose
 		}
 	}
+	
+	toString(){
+		var output = ""
+		output += "<img src='" + this.img_url + "'>"
+		output += "Vehicle: " + this.name + "<br>"
+		output += "Can hold:<br>"
+		if (this.max_loose > 0){
+			output += this.max_loose + " tonnes loose<br>"
+		}
+		if (this.max_heavy > 0){
+			output += this.max_heavy + " heavy bags<br>"
+		}
+		if (this.max_light > 0){
+			output += this.max_light + " light bags<br>"
+		}
+		output += "Cost: £" + this.cost_per_mile + " per mile<br>"
+		if (this.extra_info != ""){
+			output += "Extra info:<br>" + this.extra_info
+		}
+		return output
+	}
+	
+	addInfo(new_info){
+		this.extra_info += new_info
+	}
 }
 
 //Product class - used to store information about one type of product
 class Product {
-	constructor(name,price_loose,price_bagged,heavy){
+	constructor(name,type,price_loose,price_bagged,heavy){
 		this.name = name
+		this.type = type
 		this.price_loose = price_loose
 		this.price_bagged = price_bagged
 		this.heavy = heavy
@@ -203,27 +275,42 @@ class Quote{
 			if(usable_vehicles[v].getAmount(bagged,this.product.heavy) > max_amt) max_amt = usable_vehicles[v].getAmount(bagged,this.product.heavy)
 		}
 		console.log(max_amt)
-		while(amount_working > 0){
-			for (var v in usable_vehicles){
-				if(usable_vehicles[v].getAmount(bagged,this.product.heavy) <= amount_working){
-					if (v==0){
+		if (usable_vehicles.length > 1){
+			while(amount_working > 0){
+				console.log("amount_working = " + amount_working)
+				console.log("iterating through vehicles...")
+				for(var v in usable_vehicles){
+					console.log("check vehicle")
+					if(v == 0 && amount_working >= usable_vehicles[v].getAmount(bagged,this.product.heavy)){
+						console.log("added vehicle " + usable_vehicles[v].name)
 						this.trips.push(usable_vehicles[v])
 						amount_working -= usable_vehicles[v].getAmount(bagged,this.product.heavy)
 						break
 					} else {
-						this.trips.push(usable_vehicles[v-1])
-						amount_working -= usable_vehicles[v-1].getAmount(bagged,this.product.heavy)
-						break
+						
+						if(amount_working > usable_vehicles[v].getAmount(bagged,this.product.heavy)) {
+							this.trips.push(usable_vehicles[v-1])
+							console.log("added vehicle " + usable_vehicles[v-1].name)
+							amount_working -= usable_vehicles[v-1].getAmount(bagged,this.product.heavy)
+							break
+						} else if (v == usable_vehicles.length-1){
+							this.trips.push(usable_vehicles[v])
+							console.log("added vehicle " + usable_vehicles[v].name)
+							amount_working -= usable_vehicles[v].getAmount(bagged,this.product.heavy)
+							break
+						}
 					}
 				}
+				/*if (amount_working <= usable_vehicles[usable_vehicles.length-1].getAmount(bagged,this.product.heavy)){
+					this.trips.push(usable_vehicles[usable_vehicles.length-1])
+					amount_working -= usable_vehicles[usable_vehicles.length-1].getAmount(bagged,this.product.heavy)
+				}*/
 			}
-			var last_veh = usable_vehicles[usable_vehicles.length-1]
-			if(amount_working < last_veh.getAmount(bagged,this.product.heavy)) {
-				this.trips.push(usable_vehicles[usable_vehicles.length-1])
-				amount_working -= usable_vehicles[usable_vehicles.length-1].getAmount(bagged,this.product.heavy)
+		} else {
+			while(amount_working > 0){
+				this.trips.push(usable_vehicles[0])
+				amount_working -= usable_vehicles[0].getAmount(bagged,this.product.heavy)
 			}
-			console.log("trips:")
-			console.log(this.trips)
 		}
 		this.bagged = bagged
 		this.distance = parseFloat(distance)
@@ -240,6 +327,16 @@ class Quote{
 		return Math.round(price * this.amount*100)/100
 	}
 	
+	getPriceWithDiscount(){
+		var price = this.getPrice()
+		if (this.amount >= 20){
+			price *= 0.75
+		} else if (this.amount >= 5){
+			price *= 0.9
+		}
+		return Math.round(price*100)/100
+	}
+	
 	getDelivery(){
 		var delivery = 0
 		for (var t in this.trips){
@@ -249,6 +346,24 @@ class Quote{
 		}
 		return Math.round(delivery*this.distance*2*100)/100
 	}
+	
+	toString(){
+		var output = ""
+		output += this.amount + " "
+		if(this.bagged){
+			output += "m³ "
+		} else {
+			output += "tonne(s) "
+		}
+		output += this.product.name + "<br>"
+		output += "£" + (this.getPriceWithDiscount()+this.getDelivery()) + " including delivery<br>"
+		for (var t in this.trips){
+			output += this.trips[t].name + ", "
+		}
+		output = output.substring(0,output.length-2)
+		output += "<br><br>"
+		return output
+	}
 }
 
 function el(id){
@@ -256,6 +371,7 @@ function el(id){
 }
 
 function setup(){
+	el("vehicle-select").innerHTML += "<option value='auto'>Auto-select</option>"
 	for (var v in vehicles.vehicles){
 		name = vehicles.vehicles[v].name
 		el("vehicle-select").innerHTML += "<option value='" + name + "'>" + name + "</option>"
@@ -264,6 +380,9 @@ function setup(){
 		name = products.products[p].name
 		el("product-select").innerHTML += "<option value='" + name + "'>" + name + "</option>"
 	}
+	productChange()
+	vehicleChange()
+	el("vehicle-info").style["display"] = "none"
 }
 
 function buttonPress(){
@@ -274,16 +393,75 @@ function buttonPress(){
 	q_distance = el("mileage-input").value
 	el("output").innerHTML = ""
 	try{
-		var new_quote = new Quote(q_product,q_amount,q_vehicle,q_bagged,q_distance)
-		el("output").innerHTML += "£" + new_quote.getPrice() + "<br>"
-		el("output").innerHTML += "£" + new_quote.getDelivery() + "<br>"
-		el("output").innerHTML += new_quote.trips.length + " trip(s):<br>"
+		new_quote = new Quote(q_product,q_amount,q_vehicle,q_bagged,q_distance)
+		el("output").innerHTML += "Price (with delivery): £" + (new_quote.getPrice()+new_quote.getDelivery()) + "<br>"
+		el("output").innerHTML += "Discounted price (with delivery): £" + (new_quote.getPriceWithDiscount()+new_quote.getDelivery()) + "<br>"
+		el("output").innerHTML += "Delivery: £" + new_quote.getDelivery() + "<br><br>"
+		el("output").innerHTML += new_quote.trips.length + " trip(s):<br><ul>"
 		for (var t in new_quote.trips){
-			el("output").innerHTML += new_quote.trips[t].name + "<br>"
+			el("output").innerHTML += "<li>" + new_quote.trips[t].name + "</li><br>"
 		}
+		el("output").innerHTML += "</ul>"
 	}
 	catch (e){
 		el("output").innerHTML += e
+	}
+	el("vehicle-info").innerHTML = ""
+	used_vehicles = []
+	var need_checks = false
+	for (t in new_quote.trips){
+		if(!used_vehicles.includes(new_quote.trips[t].name)){
+			el("vehicle-info").innerHTML += new_quote.trips[t].toString() + "<br><br>"
+			used_vehicles.push(new_quote.trips[t].name)
+		}
+		if(new_quote.trips[t].name == "Black tipper"){
+			need_checks = true
+		}
+	}
+	if(need_checks){
+		el("vehicle-checks").style["display"] = "block"
+	} else {
+		el("vehicle-checks").style["display"] = "none"
+	}
+}
+
+function vehicleInfoButton(){
+	if(el("vehicle-info").style["display"] == "block"){
+		el("vehicle-info").style["display"] = "none"
+		el("vehicle-info-btn").innerHTML = el("vehicle-info-btn").innerHTML.replace("Hide","Show")
+	} else {
+		el("vehicle-info").style["display"] = "block"
+		el("vehicle-info-btn").innerHTML = el("vehicle-info-btn").innerHTML.replace("Show","Hide")
+	}
+}
+
+function quoteButton(){
+	var checks_ok = true
+	if(el("vehicle-checks").style["display"] == "block"){
+		if(!el("vcheck1").checked) checks_ok = false
+		if(!el("vcheck2").checked) checks_ok = false
+		if(!el("vcheck3").checked) checks_ok = false
+	}
+	if(!checks_ok){
+		alert("Ask the customer the questions displayed. If the vehicle is unsuitable, choose a different one.")
+		return
+	}
+	if(new_quote != undefined){
+		el("quote-info").style["display"] = "block"
+		el("quote-info").innerHTML = ""
+		if(new_quote != undefined){
+			quotes.push(new_quote)
+		}
+		var total_price = 0
+		for (q in quotes){
+			el("quote-info").innerHTML += quotes[q].toString()
+			total_price += (quotes[q].getPriceWithDiscount()+quotes[q].getDelivery())
+		}
+		new_quote = undefined
+		el("output").innerHTML = ""
+		el("quote-info").innerHTML += "Total: £" + total_price
+	} else {
+		alert("Please 'Calculate' before attempting to add quotes.")
 	}
 }
 
@@ -297,26 +475,54 @@ function productChange(){
 	}
 }
 
-vehicles = new VehicleList()
-products = new ProductList()
+function vehicleChange(){
+	var v = el("vehicle-select").value
+	if (v != "auto"){
+		el("vehicle-info").innerHTML = vehicles.getVehicle(v).toString()
+	} else {
+		el("vehicle-info").innerHTML = "Select a vehicle to see information"
+	}
+}
+
+var vehicles = new VehicleList()
+var products = new ProductList()
+var quotes = []
+var new_quote
 
 vehicles.addVehicles([
-	new Vehicle("19.5 tonne lorry",19.5,0,0),
-	new Vehicle("16.5 tonne lorry",16.5,12,12),
-	new Vehicle("6 bag lorry",0,4,6),
-	new Vehicle("Iveco",4,0,0),
-	new Vehicle("Cabstar",2,0,0)
+	new Vehicle("Black tipper",19.5,0,0,"https://d2v9y0dukr6mq2.cloudfront.net/video/thumbnail/r1x03Smimpp1uol/dump-truck-unloading-soil-at-construction-site_heacrcewl_thumbnail-full01.png"),
+	new Vehicle("Red grab lorry",16.5,12,12,""),
+	new Vehicle("7.5 tonne grab",0,4,6,""),
+	new Vehicle("Iveco",4,0,0,""),
+	new Vehicle("Cabstar",2,0,0,"")
 ])
+
+vehicles.getVehicle("Red grab lorry").addInfo("33ft/10m long<br>11ft/3.4m wide<br>12ft/3.7m high")
+vehicles.getVehicle("Black tipper").addInfo("33ft/10m long<br>11ft/3.4 wide<br>12ft/3.7m high")
+vehicles.getVehicle("7.5 tonne grab").addInfo("21ft/6.4m long<br>8ft/2.5m wide<br>10ft/3.1m high")
 
 products.addProducts([
-	new Product("Topsoil",70,72,true),
-	new Product("Bark",79,81,false)
+	new Product("Topsoil","Soils",70,72,true),
+	new Product("Root Zone","Soils",79,81,false),
+	new Product("Lawn Mix","Soils",76,78,false),
+	new Product("Garden Mix","Soils",76,78,false),
+	new Product("Green Compost","Soils",76,78,false),
+	new Product("Mushroom Compost","Soils",76,78,false),
+	new Product("Manure","Soils",67,69,true),
+	new Product("Bark","Woods",79,81,false),
+	new Product("Bark Mulch","Woods",79,81,false),
+	new Product("Woodchip","Woods",70,72,false),
+	new Product("MoT Type 1","Aggregates",52,54,true),
+	new Product("Limestone Shingle","Aggregates",52,54,true),
+	new Product("Golden Flint","Aggregates",94,96,true),
+	new Product("Shingle","Aggregates",70,72,true),
+	new Product("Binding Path Gravel","Aggregates",73,75,true),
+	new Product("Pea Shingle","Aggregates",73,75,true),
+	new Product("Sharp Sand","Aggregates",52,54,true),
+	new Product("Soft Sand","Aggregates",52,54,true),
+	new Product("Ballast","Aggregates",64,66,true)
 ])
 
-productChange()
-
 setup()
-
-
 
 </script>
